@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Noto_Sans_JP } from "next/font/google";
+import { BIZ_UDPGothic } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const notoSansJP = Noto_Sans_JP({
-  variable: "--font-noto-sans-jp",
+const bizUDPGothic = BIZ_UDPGothic({
+  weight: ["400", "700"],
+  variable: "--font-bizudp-gothic",
   subsets: ["latin"],
   display: "swap",
 });
@@ -21,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${notoSansJP.variable} antialiased`}>
+      <body className={`${bizUDPGothic.className} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -57,6 +57,8 @@ model VerificationToken {
 model Habit {
   id        String    @id @default(cuid())
   name      String
+  purpose   String?   // この習慣をやる目的
+  days      String    @default("0,1,2,3,4,5,6") // 曜日: 0=日,1=月,...,6=土
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   checkIns  CheckIn[]

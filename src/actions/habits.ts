@@ -16,6 +16,8 @@ async function getAuthUserId(): Promise<string> {
 export async function addHabit(formData: FormData) {
   const userId = await getAuthUserId();
   const name = formData.get("name") as string;
+  const purpose = formData.get("purpose") as string;
+  const days = formData.get("days") as string;
 
   if (!name || name.trim().length === 0) {
     throw new Error("習慣名を入力してください");
@@ -24,11 +26,34 @@ export async function addHabit(formData: FormData) {
   await prisma.habit.create({
     data: {
       name: name.trim(),
+      purpose: purpose?.trim() || null,
+      days: days || "0,1,2,3,4,5,6",
       userId,
     },
   });
 
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/habits");
+}
+
+export async function updateHabit(habitId: string, data: { days?: string; purpose?: string | null }) {
+  const userId = await getAuthUserId();
+
+  const habit = await prisma.habit.findUnique({
+    where: { id: habitId },
+  });
+
+  if (!habit || habit.userId !== userId) {
+    throw new Error("この習慣にアクセスする権限がありません");
+  }
+
+  await prisma.habit.update({
+    where: { id: habitId },
+    data,
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/habits");
 }
 
 export async function deleteHabit(habitId: string) {
@@ -47,11 +72,12 @@ export async function deleteHabit(habitId: string) {
   });
 
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/habits");
 }
 
-export async function toggleCheckIn(habitId: string) {
+export async function toggleCheckIn(habitId: string, date?: string) {
   const userId = await getAuthUserId();
-  const today = getToday();
+  const today = date || getToday();
 
   const habit = await prisma.habit.findUnique({
     where: { id: habitId },

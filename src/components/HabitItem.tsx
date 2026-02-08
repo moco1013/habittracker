@@ -1,80 +1,131 @@
 "use client";
 
-import { toggleCheckIn, deleteHabit } from "@/actions/habits";
+import { useState, useTransition } from "react";
+import { toggleCheckIn } from "@/actions/habits";
 
 type HabitItemProps = {
   id: string;
   name: string;
-  streak: number;
-  weeklyCheckIns: boolean[]; // 7 booleans, oldest to newest
-  weeklyLabels: string[]; // 7 day labels
+  purpose: string | null;
   isCheckedToday: boolean;
+  date?: string;
 };
 
-export function HabitItem({
-  id,
-  name,
-  streak,
-  weeklyCheckIns,
-  weeklyLabels,
-  isCheckedToday,
-}: HabitItemProps) {
+const CHEER_MESSAGES = [
+  "できた！",
+  "最高！",
+  "すごすぎ！",
+  "えらい！",
+  "天才！",
+  "完璧！",
+  "さすが！",
+  "やるじゃん！",
+  "ナイス！",
+  "その調子！",
+];
+
+function getRandomCheer() {
+  return CHEER_MESSAGES[Math.floor(Math.random() * CHEER_MESSAGES.length)];
+}
+
+function Confetti() {
+  const particles = Array.from({ length: 20 }, (_, i) => {
+    const angle = (i / 20) * 360;
+    const distance = 40 + Math.random() * 30;
+    const x = Math.cos((angle * Math.PI) / 180) * distance;
+    const y = Math.sin((angle * Math.PI) / 180) * distance;
+    const colors = ["#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6", "#ec4899"];
+    const color = colors[i % colors.length];
+    const size = 4 + Math.random() * 4;
+    const delay = Math.random() * 0.15;
+
+    return (
+      <span
+        key={i}
+        className="absolute left-1/2 top-1/2 rounded-full"
+        style={{
+          width: size,
+          height: size,
+          backgroundColor: color,
+          animation: `confetti-burst 0.6s ${delay}s ease-out forwards`,
+          // @ts-expect-error CSS custom properties
+          "--x": `${x}px`,
+          "--y": `${y}px`,
+        }}
+      />
+    );
+  });
+
+  return <div className="pointer-events-none absolute inset-0">{particles}</div>;
+}
+
+export function HabitItem({ id, name, purpose, isCheckedToday, date }: HabitItemProps) {
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [cheerMessage, setCheerMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  const handleToggle = () => {
+    if (!isCheckedToday) {
+      setCheerMessage(getRandomCheer());
+      setShowConfetti(true);
+      setTimeout(() => {
+        setShowConfetti(false);
+        setCheerMessage("");
+      }, 1200);
+    }
+    startTransition(() => toggleCheckIn(id, date));
+  };
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
-      {/* Row 1: Check button + name + delete */}
+    <div className="relative rounded-xl bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
-        <form action={() => toggleCheckIn(id)}>
+        <div className="relative">
           <button
-            type="submit"
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+            type="button"
+            onClick={handleToggle}
+            disabled={isPending}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 ${
               isCheckedToday
-                ? "border-green-500 bg-green-500 text-white"
-                : "border-slate-300 hover:border-green-400"
-            }`}
+                ? "scale-110 border-green-500 bg-green-500 text-white"
+                : "border-slate-300 hover:border-green-400 hover:bg-green-50"
+            } ${isPending ? "opacity-50" : ""}`}
             aria-label={isCheckedToday ? "チェックを外す" : "チェックする"}
           >
             {isCheckedToday && (
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <svg
+                className="h-6 w-6 animate-[check-pop_0.3s_ease-out]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             )}
           </button>
-        </form>
-        <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
-        <form action={() => deleteHabit(id)}>
-          <button
-            type="submit"
-            className="p-2 text-slate-400 transition-colors hover:text-red-500"
-            aria-label="削除"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        </form>
-      </div>
+          {showConfetti && <Confetti />}
+        </div>
 
-      {/* Row 2: Streak + weekly dots */}
-      <div className="mt-2 flex items-center gap-3 pl-[52px]">
-        {streak > 0 && (
-          <span className="shrink-0 text-sm font-medium text-orange-500">
-            🔥 {streak}日
+        <div className="min-w-0 flex-1">
+          <span
+            className={`block truncate text-base font-medium transition-all duration-300 ${
+              isCheckedToday ? "text-slate-400 line-through" : ""
+            }`}
+          >
+            {name}
+          </span>
+          {purpose && (
+            <span className="block truncate text-xs text-slate-400">
+              {purpose}
+            </span>
+          )}
+        </div>
+
+        {cheerMessage && (
+          <span className="animate-[cheer-pop_1.2s_ease-out_forwards] text-sm font-bold text-green-500">
+            {cheerMessage}
           </span>
         )}
-        <div className="flex items-center gap-1">
-          {weeklyCheckIns.map((checked, i) => (
-            <div key={i} className="flex flex-col items-center">
-              <div
-                className={`h-6 w-6 rounded-full md:h-5 md:w-5 ${
-                  checked ? "bg-green-400" : "bg-slate-200"
-                }`}
-              />
-              <span className="mt-0.5 text-[10px] text-slate-400">
-                {weeklyLabels[i]}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
